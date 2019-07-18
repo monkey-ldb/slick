@@ -13,6 +13,8 @@
     Repo: http://github.com/kenwheeler/slick
   Issues: http://github.com/kenwheeler/slick/issues
 
+  05/2019: Updated by Bryan Garaventa (https://github.com/accdc) to enhance automatic accessibility by default for screen reader and keyboard-only users.
+
  */
 /* global window, document, define, jQuery, setInterval, clearInterval */
 ;(function(factory) {
@@ -69,7 +71,7 @@
                 edgeFriction: 0.35,
                 fade: false,
                 focusOnSelect: false,
-                focusOnChange: false,
+                focusOnChange: true,
                 infinite: true,
                 initialSlide: 0,
                 lazyLoad: 'ondemand',
@@ -1103,7 +1105,7 @@
                     var $sf = $(this);
 
                     // When a blur occurs on any elements within the slider we become unfocused
-                    if( _.options.pauseOnFocus ) {
+                    if( _.options.pauseOnFocus || (_.options.focusOnChange && _.focussed)) {
                         _.focussed = false;
                         _.autoPlay();
                     }
@@ -1397,7 +1399,10 @@
 
         _.$slides.add(_.$slideTrack.find('.slick-cloned')).attr({
             'aria-hidden': 'true',
-            'tabindex': '-1'
+            'tabindex': '-1',
+            // BG: Added role and region for standard slides to allow for proper boundary information to be conveyed to screen reader users.
+            'role': 'region',
+            'aria-label': 'Slide'
         }).find('a, input, button, select').attr({
             'tabindex': '-1'
         });
@@ -1415,7 +1420,7 @@
                    var ariaButtonControl = 'slick-slide-control' + _.instanceUid + slideControlIndex
                    if ($('#' + ariaButtonControl).length) {
                      $(this).attr({
-                         'aria-describedby': ariaButtonControl
+                         'aria-label': 'Slide' + (slideControlIndex + 1) // BG: Changed to provide more accurate name for screen reader users when using the arrow keys.
                      });
                    }
                 }
@@ -1430,6 +1435,9 @@
                 $thisButton.first().attr({
                     'id': 'slick-slide-control' + _.instanceUid + i,
                     'aria-controls': 'slick-slide' + _.instanceUid + mappedSlideIndex,
+                    // 'aria-label': (i + 1) + ' of ' + numDotGroups, /BG: Use of aria-label is breaking feedback for screen reader users as dots are incorrectly represented.
+                    'aria-selected': null,
+                    'tabindex': '-1'
                 });
                 if (!$thisTrigger.find('.slick-dot-content').length) {
                     $thisTrigger.append($buttonContent);
@@ -1446,6 +1454,11 @@
         }
 
         _.activateADA();
+
+        _.$slider.attr({
+            'role': 'region',
+            'aria-label': 'carousel'
+        });
 
     };
 
@@ -1831,7 +1844,8 @@
 
                 if (_.options.focusOnChange || forceFocus) {
                     var $currentSlide = $(_.$slides.get(_.currentSlide));
-                    $currentSlide.attr('tabindex', 0).focus();
+                    $currentSlide.attr('tabindex', 0);
+                    if (_.focussed) $currentSlide.focus();
                 }
                 if (announce) {
                     var announceItem = _.options.labelAnnouncement.replace("{currentItem}", ++index).replace("{totalItems}", _.slideCount);
